@@ -8,6 +8,12 @@ import com.showshaala.show_shaala.payload.requestDto.JwtRequest;
 import com.showshaala.show_shaala.payload.requestDto.UserEntryDto;
 import com.showshaala.show_shaala.security.JwtHelper;
 import com.showshaala.show_shaala.services.UserService;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Bucket4j;
+import io.github.bucket4j.ConsumptionProbe;
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.Duration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +42,11 @@ public class SigninSignUpController {
 
   @Autowired
   private UserService userService;
+  private final Bucket bucket;
+
+  public SigninSignUpController(Bucket bucket) {
+    this.bucket = bucket;
+  }
 
   /**
    * Endpoint for creating a new user.
@@ -65,20 +76,25 @@ public class SigninSignUpController {
    */
   @PostMapping("/login")
   public ResponseEntity<ApiResponse> logIn(@RequestBody JwtRequest jwtRequest) {
-    doAuthenticate(jwtRequest.getEmail(), jwtRequest.getPassword());
-    final UserDetails user = userDetailsService.loadUserByUsername(jwtRequest.getEmail());
-    String token = jwtHelper.generateToken(user);
+
+    if(bucket.tryConsume(1)) {
+      doAuthenticate(jwtRequest.getEmail(), jwtRequest.getPassword());
+      final UserDetails user = userDetailsService.loadUserByUsername(jwtRequest.getEmail());
+      String token = jwtHelper.generateToken(user);
 //    ApiResponse response = new ApiResponse();
 //    response.setData(token);
-    ServiceResponse<UserDto> getUser = userService.getUser(jwtRequest.getEmail(),
-        jwtRequest.getPassword());
-    if (getUser.getSuccess()) {
-      return new ResponseEntity<>((new ApiResponse("success", token)),
-          HttpStatus.CREATED);
-    } else {
-      return new ResponseEntity<>(
-          (new ApiResponse("failure", null, new Error(getUser.getMessage()))),
-          HttpStatus.BAD_REQUEST);
+      ServiceResponse<UserDto> getUser = userService.getUser(jwtRequest.getEmail(),
+          jwtRequest.getPassword());
+      if (getUser.getSuccess()) {
+        return new ResponseEntity<>((new ApiResponse("success", token)),
+            HttpStatus.CREATED);
+      } else {
+        return new ResponseEntity<>(
+            (new ApiResponse("failure", null, new Error(getUser.getMessage()))),
+            HttpStatus.BAD_REQUEST);
+      }
+    }else{
+      return new ResponseEntity<>(new ApiResponse("failure",null, "Too many login attempts. Please try again later."), HttpStatus.TOO_MANY_REQUESTS);
     }
 
 
