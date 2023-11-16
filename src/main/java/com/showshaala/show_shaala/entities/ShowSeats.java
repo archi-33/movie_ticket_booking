@@ -85,7 +85,8 @@ public class ShowSeats {
 
   }
   public void setAvailable(){
-    setStatus(BookingStatus.FREE);
+    this.setStatus(BookingStatus.FREE);
+
 
   }
 
