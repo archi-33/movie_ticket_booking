@@ -33,6 +33,8 @@ public class Payment {
   @Enumerated(EnumType.STRING)
   private PaymentStatus status;
 
+  private double paidAmt;
+
   @OneToOne
   @JoinColumn(name = "ticketId")
   private Ticket ticket;

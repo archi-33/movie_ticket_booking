@@ -12,6 +12,8 @@ public interface TicketService {
   ServiceResponse<?> bookTicket(BookingRequestDto bookingRequestDto, Principal principal);
   ServiceResponse<List<BookingResponseDto>> bookingHistory(Principal principal);
 
+//  ServiceResponse<?> cancelBooking(Long id, Principal principal);
+
 //  Ticket getTicket(int id);
 
 }

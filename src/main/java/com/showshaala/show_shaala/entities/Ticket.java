@@ -41,6 +41,9 @@ public class Ticket {
 
   private String ScreenName;
 
+  @Column(columnDefinition = "boolean default false")
+  private boolean cancelled;
+
   @ManyToOne
   @JsonIgnore
   private User user;

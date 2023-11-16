@@ -1,6 +1,5 @@
 package com.showshaala.show_shaala.controllers;
 
-import com.showshaala.show_shaala.entities.Payment;
 import com.showshaala.show_shaala.payload.ApiResponse;
 import com.showshaala.show_shaala.payload.Error;
 import com.showshaala.show_shaala.payload.ServiceResponse;
@@ -15,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,22 +24,49 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/app")
 @EnableMethodSecurity
 public class PaymentController {
+
   @Autowired
   private PaymentService paymentService;
 
   @PostMapping("/pay")
   @PreAuthorize("hasRole('ROLE_USER')")
-  ResponseEntity<ApiResponse> pay(@RequestBody PaymentRequestDto paymentRequestDto, Principal principal){
-    if(paymentRequestDto.getPaymentStatus()==PaymentStatus.FAIL){
-      return new ResponseEntity<>(new ApiResponse("failure", null, new Error("please pay first to confirm ticket")), HttpStatus.PAYMENT_REQUIRED);
+  ResponseEntity<ApiResponse> pay(@RequestBody PaymentRequestDto paymentRequestDto,
+      Principal principal) {
+    if (paymentRequestDto.getPaymentStatus() == PaymentStatus.FAIL) {
+      return new ResponseEntity<>(
+          new ApiResponse("failure", null, new Error("please pay first to confirm ticket")),
+          HttpStatus.PAYMENT_REQUIRED);
     }
 
-    ServiceResponse<BookingResponseDto> pay = paymentService.pay(paymentRequestDto.getTicketId(),paymentRequestDto.getPaymentStatus(),principal);
-    if(pay.getSuccess()){
+    ServiceResponse<BookingResponseDto> pay = paymentService.pay(paymentRequestDto.getTicketId(),
+        paymentRequestDto.getPaymentStatus(), principal);
+    if (pay.getSuccess()) {
       return new ResponseEntity<>(new ApiResponse("success", pay.getData(), pay.getMessage()),
           HttpStatus.CREATED);
     }
-    return new ResponseEntity<>(new ApiResponse("failure", pay.getData(), new Error(pay.getMessage())), HttpStatus.BAD_REQUEST);
+    return new ResponseEntity<>(
+        new ApiResponse("failure", pay.getData(), new Error(pay.getMessage())),
+        HttpStatus.BAD_REQUEST);
   }
 
+  @PutMapping("/cancelBooking")
+  @PreAuthorize("hasRole('ROLE_USER')")
+  public ResponseEntity<ApiResponse> cancelTicket(@RequestParam Long id, Principal principal) {
+//    try {
+    ServiceResponse<?> serviceResponse = paymentService.cancelBooking(id, principal);
+    if (serviceResponse.getSuccess()) {
+      return new ResponseEntity<>(
+          new ApiResponse("success", serviceResponse.getData(), serviceResponse.getMessage()),
+          HttpStatus.OK);
+    } else {
+      return new ResponseEntity<>(
+          (new ApiResponse("failure", null, new Error(serviceResponse.getMessage()))),
+          HttpStatus.BAD_REQUEST);
+    }
+  }
+//    } catch (Exception e) {
+//      return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+//    }
 }
+
+
