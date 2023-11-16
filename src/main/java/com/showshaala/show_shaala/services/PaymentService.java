@@ -9,7 +9,7 @@ import java.security.Principal;
 
 public interface PaymentService {
 
-  ServiceResponse<BookingResponseDto> pay(Long ticketId, PaymentStatus status, Principal principal);
+  ServiceResponse<BookingResponseDto> pay(Long ticketId, double amount, Principal principal);
   ServiceResponse<?> processRefund(Ticket ticket);
   ServiceResponse<?> cancelBooking(Long id, Principal principal);
 

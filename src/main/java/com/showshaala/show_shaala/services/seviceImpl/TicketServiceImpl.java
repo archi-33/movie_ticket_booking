@@ -125,7 +125,7 @@ public class TicketServiceImpl implements TicketService {
     Ticket savedTicket = ticketRepo.save(ticket);
 
     return new ServiceResponse<>(true, "ticketId: " + savedTicket.getTicketId(),
-        "Please proceed to payment against the provided ticketId");
+        "Please proceed to payment against the provided ticketId of amount: "+amount);
 
 //    ticket.setPayment();
 

@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 public class ShowSeatResponse {
 
   private String seatNumber;
+  private double rate;
 
 
 }

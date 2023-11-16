@@ -32,14 +32,14 @@ public class PaymentController {
   @PreAuthorize("hasRole('ROLE_USER')")
   ResponseEntity<ApiResponse> pay(@RequestBody PaymentRequestDto paymentRequestDto,
       Principal principal) {
-    if (paymentRequestDto.getPaymentStatus() == PaymentStatus.FAIL) {
-      return new ResponseEntity<>(
-          new ApiResponse("failure", null, new Error("please pay first to confirm ticket")),
-          HttpStatus.PAYMENT_REQUIRED);
-    }
+//    if (paymentRequestDto.getPaymentStatus() == PaymentStatus.FAIL) {
+//      return new ResponseEntity<>(
+//          new ApiResponse("failure", null, new Error("please pay first to confirm ticket")),
+//          HttpStatus.PAYMENT_REQUIRED);
+//    }
 
     ServiceResponse<BookingResponseDto> pay = paymentService.pay(paymentRequestDto.getTicketId(),
-        paymentRequestDto.getPaymentStatus(), principal);
+        paymentRequestDto.getAmount(), principal);
     if (pay.getSuccess()) {
       return new ResponseEntity<>(new ApiResponse("success", pay.getData(), pay.getMessage()),
           HttpStatus.CREATED);
