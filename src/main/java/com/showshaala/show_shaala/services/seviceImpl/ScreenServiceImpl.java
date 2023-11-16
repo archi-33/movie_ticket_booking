@@ -44,6 +44,7 @@ public class ScreenServiceImpl implements ScreenService {
       screenSeat.setSeatNumber((j++)+""+ch);
       screenSeats.add(screenSeat);
       screenSeat.setScreen(screen);
+      screenSeat.setRate(100);
     }
     screen.setScreenSeats(screenSeats);
 

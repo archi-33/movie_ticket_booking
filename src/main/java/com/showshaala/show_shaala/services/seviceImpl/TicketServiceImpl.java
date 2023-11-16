@@ -17,6 +17,7 @@ import com.showshaala.show_shaala.repositories.ShowRepo;
 import com.showshaala.show_shaala.repositories.ShowSeatsRepo;
 import com.showshaala.show_shaala.repositories.TicketRepo;
 import com.showshaala.show_shaala.repositories.UserRepo;
+import com.showshaala.show_shaala.services.PaymentService;
 import com.showshaala.show_shaala.services.TicketService;
 import java.security.Principal;
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TicketServiceImpl implements TicketService {
+
   @Autowired
   private ShowRepo showRepo;
 
@@ -45,7 +47,6 @@ public class TicketServiceImpl implements TicketService {
 
   @Autowired
   private ModelMapper modelMapper;
-
 
 
   @Transactional(isolation = Isolation.SERIALIZABLE)
@@ -63,10 +64,12 @@ public class TicketServiceImpl implements TicketService {
     List<ShowSeats> showSeatsList = show.get().getShowSeatList();
     List<ShowSeats> requestedSeats = new ArrayList<>();
 
-    for(ShowSeats seat: showSeatsList){
-      if(seat.getStatus()== BookingStatus.FREE) {
+    for (ShowSeats seat : showSeatsList) {
+      if (seat.getStatus() == BookingStatus.FREE) {
         for (ShowSeatResponse req_seat : bookingRequestDto.getSeatList()) {
           if (Objects.equals(seat.getSeatNumber(), req_seat.getSeatNumber())) {
+            if(requestedSeats.contains(seat))
+              continue;
             requestedSeats.add(seat);
           }
         }
@@ -75,15 +78,20 @@ public class TicketServiceImpl implements TicketService {
 //    System.out.println(requestedSeats);
 //    System.out.println("==============================================================================");
 
-    double amount = 0;
+    double amount=0.0;
 
-    for(ShowSeats seat: requestedSeats){
+    for (ShowSeats seat : requestedSeats) {
       seat.lockSeats();
       seat.setShow(show.get());
-      amount += seat.getRate();
-      showSeatsRepo.save(seat);
-    }
 
+      showSeatsRepo.save(seat);
+      amount += seat.getRate();
+    }
+    if (amount > 100) {
+      amount += amount * 18 / 100;
+    } else {
+      amount += amount * 12 / 100;
+    }
 
 //    List<ShowSeats> requestedSeats = bookTicketRequestDto.getRequestedSeats();
 //    List<ShowSeats> showSeatsList = show.get().getShowSeatList();
@@ -97,14 +105,12 @@ public class TicketServiceImpl implements TicketService {
 //
 //     }
 
-
     Ticket ticket = Ticket.builder()
         .user(user)
         .show(show.get())
         .seatList(requestedSeats)
+        .amount(amount)
         .build();
-
-
 
     for (ShowSeats seat : requestedSeats) {
       seat.setTicket(ticket);
@@ -113,17 +119,15 @@ public class TicketServiceImpl implements TicketService {
 
     ticket.setScreenName(ticket.getShow().getScreen().getScreenName());
 
-    ticket.setAmount(amount);
-
     Payment pay = new Payment(ticket);
     ticket.setPayment(pay);
 
     Ticket savedTicket = ticketRepo.save(ticket);
 
-    return  new ServiceResponse<>(true, "ticketId: "+savedTicket.getTicketId(), "Please proceed to payment against the provided ticketId");
+    return new ServiceResponse<>(true, "ticketId: " + savedTicket.getTicketId(),
+        "Please proceed to payment against the provided ticketId");
 
 //    ticket.setPayment();
-
 
 //    ticket.setPayment(paymentService.validatePayment(ticket));
 //    ticketsRepo.save(ticket);
@@ -163,15 +167,15 @@ public class TicketServiceImpl implements TicketService {
   public ServiceResponse<List<BookingResponseDto>> bookingHistory(Principal principal) {
     User user = userRepo.findByEmail(principal.getName()).get();
     List<Ticket> ticketList;
-    try{
+    try {
 //      ticketList = ticketRepo.findAllByUserId(user.getUserId(), PaymentStatus.PAID);
       ticketList = ticketRepo.findAllByUserId(user.getUserId());
-    }catch (Exception e){
+    } catch (Exception e) {
       return new ServiceResponse<>(false, null, e.getMessage());
     }
     List<BookingResponseDto> finalList = new ArrayList<>();
-    for(Ticket ticket: ticketList){
-      if(ticket.getPayment().getStatus()==PaymentStatus.FAIL){
+    for (Ticket ticket : ticketList) {
+      if (ticket.getPayment().getStatus() == PaymentStatus.FAIL) {
         continue;
       }
       List<ShowSeatResponse> seatResponses = new ArrayList<>();
@@ -187,15 +191,45 @@ public class TicketServiceImpl implements TicketService {
           .ScreenName(ticket.getScreenName())
           .seatList(seatResponses)
           .bookedAt(ticket.getBookedAt())
+          .cancelled(ticket.isCancelled())
           .build();
       finalList.add(bookingResponseDto);
 
     }
-    return  new ServiceResponse<>(true, finalList, "here's the list of your bookings til date..");
-
+    return new ServiceResponse<>(true, finalList, "here's the list of your bookings til date..");
 
 
   }
+
+//  public ServiceResponse<?> cancelBooking(Long id, Principal principal) {
+//
+//    Optional<Ticket> ticket = ticketRepo.findById(id);
+//
+//    if (ticket.isPresent()) {
+//      if(!Objects.equals(ticket.get().getUser().getEmail(), principal.getName())){
+//        return new ServiceResponse<>(false, null, "you do not have any tickets associated with u with the specified id..");
+//      }
+//      Ticket t = ticket.get();
+//      t.setCancelled(true);
+//      ticketRepo.save(t);
+//
+//
+////      List<ShowSeats> showSeats = t.getSeatList();
+//      for(ShowSeats seat: t.getSeatList()){
+//        seat.setAvailable();
+//        showSeatsRepo.save(seat);
+//      }
+//
+//
+//      // Process the refund after cancellation charges
+////      User user = t.getUser();
+////      double refundAmount = t.getAmount() * 0.9;
+//      paymentService.processRefund(t);
+//    }else {
+//      return new ServiceResponse<>(false, null, "cannot find any ticket with the specified id");
+//    }
+//    return null;
+//  }
 
 //  @Override
 //  public Ticket getTicket(int id) {

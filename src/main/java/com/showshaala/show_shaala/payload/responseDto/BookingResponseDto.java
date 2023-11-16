@@ -20,5 +20,6 @@ public class BookingResponseDto {
   private ShowResponseDto showResponseDto;
   private List<ShowSeatResponse> seatList;
   private Date bookedAt;
+  private boolean cancelled;
 
 }
