@@ -43,11 +43,19 @@ public class PdfGenerator {
 //      if (!booking.getStatus().toString().equalsIgnoreCase("confirmed")) {
 //        return new ServiceResponse<>(false, null, "Please complete the payment");
 //      }
-      if(paymentRepo.findByTicketIdAndPaymentStatusPaid(bookingId)==null){
-        return new ServiceResponse<>(false, null, "Please complete the payment");
-      }
+//      if(paymentRepo.findByTicketIdAndPaymentStatusPaid(bookingId)==null){
+//        return new ServiceResponse<>(false, null, "Please complete the payment");
+//      }
+
       byte[] pdfBytes = createPdfInvoice(booking);
-      sendInvoiceByEmail(booking.getUser().getEmail(), pdfBytes);
+
+//        byte[] pdfBytes = generatePdf();
+
+        // Save PDF to the application's resources/pdfs directory
+      String filePath = "classpath:resources/pdfs/generated.pdf";
+      booking.setPdfPath(filePath);
+      ticketRepo.save(booking);
+//      sendInvoiceByEmail(booking.getUser().getEmail(), pdfBytes);
       InvoiceDto invoiceDto = new InvoiceDto();
       invoiceDto.setPdfBytes(pdfBytes);
       return new ServiceResponse<>(true, invoiceDto, "Your Invoice generated successfully");

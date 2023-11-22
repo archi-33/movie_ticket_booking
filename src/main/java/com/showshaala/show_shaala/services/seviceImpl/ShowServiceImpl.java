@@ -112,7 +112,7 @@ public class ShowServiceImpl implements ShowService {
 
     foundScreen.get().addShowToScreen(show);
     Screen screen = screenRepo.save(foundScreen.get());
-    generateShowEntitySeats(show.getScreen().getScreenSeats(), show);
+//    generateShowEntitySeats(show.getScreen().getScreenSeats(), show);
 
     Show savedShow = showRepo.save(show);
 
@@ -126,15 +126,18 @@ public class ShowServiceImpl implements ShowService {
     List<ShowSeats> showSeatsList = new ArrayList<>();
 
     for (ScreenSeats seat : seats) {
-      ShowSeats showSeats = ShowSeats.builder().seatNumber(seat.getSeatNumber()).
+      ShowSeats showSeat = ShowSeats.builder().seatNumber(seat.getSeatNumber()).
           rate(seat.getRate()).status(BookingStatus.FREE).build();
 
-      showSeats.setShow(show);
+      showSeat.setShow(show);
+      showSeatsRepo.save(showSeat);
 
-      showSeatsList.add(showSeats);
+      showSeatsList.add(showSeat);
+      System.out.println("+++++++++++++++++++++++++++++++++++++++++++");
+
     }
 
-    showSeatsRepo.saveAll(showSeatsList);
+//    showSeatsRepo.saveAll(showSeatsList);
 
     show.setShowSeatList(showSeatsList);
     showRepo.save(show);
