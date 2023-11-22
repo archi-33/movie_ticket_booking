@@ -1,5 +1,6 @@
 package com.showshaala.show_shaala.repositories;
 
+import com.showshaala.show_shaala.entities.Payment;
 import com.showshaala.show_shaala.entities.Ticket;
 import com.showshaala.show_shaala.providers.PaymentStatus;
 import jakarta.transaction.Transactional;
@@ -23,5 +24,8 @@ public interface TicketRepo extends JpaRepository<Ticket, Long> {
   @Modifying
   @Query(value = "select * from ticket where user_user_id = :userId", nativeQuery = true)
   List<Ticket> findAllByUserId(@Param("userId") Long userId);
+
+
+
 
 }

@@ -44,6 +44,10 @@ public class Ticket {
   @Column(columnDefinition = "boolean default false")
   private boolean cancelled;
 
+  @Column(unique = true, nullable = false, length = 255)
+  private String invoice;
+
+
   @ManyToOne
   @JsonIgnore
   private User user;
@@ -52,12 +56,13 @@ public class Ticket {
   @JsonIgnore
   private Show show;
 
+
   @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL)
   @JsonIgnore
   private List<ShowSeats> seatList;
 
-  @OneToOne(cascade = CascadeType.ALL, mappedBy = "ticket")
-  private Payment payment;
+//  @OneToOne(cascade = CascadeType.ALL, mappedBy = "ticket")
+//  private Payment payment;
 
   public void addShowSeatsToTicket(List<ShowSeats> showSeats) {
     seatList.addAll(showSeats);
