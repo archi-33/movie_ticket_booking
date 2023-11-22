@@ -13,6 +13,7 @@ import com.showshaala.show_shaala.payload.responseDto.ShowSeatResponse;
 import com.showshaala.show_shaala.payload.responseDto.TheaterResponseDto;
 import com.showshaala.show_shaala.providers.BookingStatus;
 import com.showshaala.show_shaala.providers.PaymentStatus;
+import com.showshaala.show_shaala.repositories.PaymentRepo;
 import com.showshaala.show_shaala.repositories.ShowRepo;
 import com.showshaala.show_shaala.repositories.ShowSeatsRepo;
 import com.showshaala.show_shaala.repositories.TicketRepo;
@@ -24,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -31,6 +34,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 public class TicketServiceImpl implements TicketService {
 
   @Autowired
@@ -46,7 +50,11 @@ public class TicketServiceImpl implements TicketService {
   private TicketRepo ticketRepo;
 
   @Autowired
+  private PaymentRepo paymentRepo;
+
+  @Autowired
   private ModelMapper modelMapper;
+
 
 
   @Transactional(isolation = Isolation.SERIALIZABLE)
@@ -64,34 +72,40 @@ public class TicketServiceImpl implements TicketService {
     List<ShowSeats> showSeatsList = show.get().getShowSeatList();
     List<ShowSeats> requestedSeats = new ArrayList<>();
 
-    for (ShowSeats seat : showSeatsList) {
-      if (seat.getStatus() == BookingStatus.FREE) {
-        for (ShowSeatResponse req_seat : bookingRequestDto.getSeatList()) {
-          if (Objects.equals(seat.getSeatNumber(), req_seat.getSeatNumber())) {
-            if(requestedSeats.contains(seat))
-              continue;
-            requestedSeats.add(seat);
-          }
+    for (ShowSeatResponse seatRequest : bookingRequestDto.getSeatList()) {
+      String requestedSeatNumber = seatRequest.getSeatNumber();
+
+      for (ShowSeats seat : showSeatsList) {
+        String availableSeatNumber = seat.getSeatNumber();
+
+        if (Objects.equals(requestedSeatNumber, availableSeatNumber)) {
+          requestedSeats.add(seat);
+          break;
         }
       }
     }
-//    System.out.println(requestedSeats);
-//    System.out.println("==============================================================================");
 
-    double amount=0.0;
 
     for (ShowSeats seat : requestedSeats) {
+      if(seat.getStatus()!=BookingStatus.FREE)
+        return new ServiceResponse<>(false, null, "the selected seats are not available");
       seat.lockSeats();
       seat.setShow(show.get());
 
       showSeatsRepo.save(seat);
+
+    }
+    double amount=0.0;
+    for(ShowSeats seat: requestedSeats) {
       amount += seat.getRate();
     }
+
     if (amount > 100) {
       amount += amount * 18 / 100;
     } else {
       amount += amount * 12 / 100;
     }
+
 
 //    List<ShowSeats> requestedSeats = bookTicketRequestDto.getRequestedSeats();
 //    List<ShowSeats> showSeatsList = show.get().getShowSeatList();
@@ -104,12 +118,15 @@ public class TicketServiceImpl implements TicketService {
 //       bookSeats.add(seat);
 //
 //     }
+    String generatedInvoice = generateAlphanumericInvoice();
+    log.info("Generated Invoice: {}", generatedInvoice);
 
     Ticket ticket = Ticket.builder()
         .user(user)
         .show(show.get())
         .seatList(requestedSeats)
         .amount(amount)
+        .invoice(generatedInvoice)
         .build();
 
     for (ShowSeats seat : requestedSeats) {
@@ -120,12 +137,14 @@ public class TicketServiceImpl implements TicketService {
     ticket.setScreenName(ticket.getShow().getScreen().getScreenName());
 
     Payment pay = new Payment(ticket);
-    ticket.setPayment(pay);
+
+//    ticket.setPayment(pay);
+    paymentRepo.save(pay);
 
     Ticket savedTicket = ticketRepo.save(ticket);
 
     return new ServiceResponse<>(true, "ticketId: " + savedTicket.getTicketId(),
-        "Please proceed to payment against the provided ticketId of amount: "+amount);
+        "Please proceed to payment against the provided ticketId of amount: "+ ticket.getAmount());
 
 //    ticket.setPayment();
 
@@ -175,7 +194,7 @@ public class TicketServiceImpl implements TicketService {
     }
     List<BookingResponseDto> finalList = new ArrayList<>();
     for (Ticket ticket : ticketList) {
-      if (ticket.getPayment().getStatus() == PaymentStatus.FAIL) {
+      if (paymentRepo.findByTicketIdAndPaymentStatusPaid(ticket.getTicketId())==null) {
         continue;
       }
       List<ShowSeatResponse> seatResponses = new ArrayList<>();
@@ -199,6 +218,11 @@ public class TicketServiceImpl implements TicketService {
     return new ServiceResponse<>(true, finalList, "here's the list of your bookings til date..");
 
 
+  }private String generateAlphanumericInvoice() {
+    String timestamp = String.valueOf(System.currentTimeMillis());
+    String randomAlphanumeric = RandomStringUtils.randomAlphanumeric(3);
+    String invoice = "INV" + timestamp + randomAlphanumeric;
+    return invoice;
   }
 
 //  public ServiceResponse<?> cancelBooking(Long id, Principal principal) {

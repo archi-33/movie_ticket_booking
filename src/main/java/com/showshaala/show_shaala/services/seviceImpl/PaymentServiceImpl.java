@@ -1,9 +1,11 @@
 package com.showshaala.show_shaala.services.seviceImpl;
 
 import com.showshaala.show_shaala.entities.Payment;
+import com.showshaala.show_shaala.entities.Refund;
 import com.showshaala.show_shaala.entities.ShowSeats;
 import com.showshaala.show_shaala.entities.Ticket;
 import com.showshaala.show_shaala.entities.User;
+import com.showshaala.show_shaala.payload.InvoiceDto;
 import com.showshaala.show_shaala.payload.ServiceResponse;
 import com.showshaala.show_shaala.payload.responseDto.BookingResponseDto;
 import com.showshaala.show_shaala.payload.responseDto.ShowResponseDto;
@@ -11,12 +13,16 @@ import com.showshaala.show_shaala.payload.responseDto.ShowSeatResponse;
 import com.showshaala.show_shaala.payload.responseDto.TheaterResponseDto;
 import com.showshaala.show_shaala.providers.BookingStatus;
 import com.showshaala.show_shaala.providers.PaymentStatus;
+import com.showshaala.show_shaala.providers.RefundStatus;
 import com.showshaala.show_shaala.repositories.PaymentRepo;
+import com.showshaala.show_shaala.repositories.RefundRepo;
 import com.showshaala.show_shaala.repositories.ShowRepo;
 import com.showshaala.show_shaala.repositories.ShowSeatsRepo;
 import com.showshaala.show_shaala.repositories.TicketRepo;
 import com.showshaala.show_shaala.repositories.UserRepo;
 import com.showshaala.show_shaala.services.PaymentService;
+import com.showshaala.show_shaala.services.PdfGenerator;
+import com.showshaala.show_shaala.services.TicketService;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Date;
@@ -44,6 +50,13 @@ public class PaymentServiceImpl implements PaymentService {
   private ModelMapper modelMapper;
   @Autowired
   private PaymentRepo paymentRepo;
+  @Autowired
+  private RefundRepo refundRepo;
+  @Autowired
+  private TicketService ticketService;
+
+  @Autowired
+  private PdfGenerator pdfGenerator;
 
   @Transactional(isolation = Isolation.SERIALIZABLE)
   @Override
@@ -79,7 +92,7 @@ public class PaymentServiceImpl implements PaymentService {
 //      return new ServiceResponse<>(false, null, "Please pay.. to confirm your booking");
 //    }
 
-    if (ticket.get().getPayment().getStatus() == PaymentStatus.PAID) {
+    if (paymentRepo.findByTicketIdAndPaymentStatusPaid(ticketId)!=null) {
       List<ShowSeatResponse> seatResponses = new ArrayList<>();
       for (ShowSeats seat : ticket.get().getSeatList()) {
         seatResponses.add(modelMapper.map(seat, ShowSeatResponse.class));
@@ -139,7 +152,12 @@ public class PaymentServiceImpl implements PaymentService {
           .build();
       payment.setStatus(PaymentStatus.PAID);
       payment.setPaidAmt(ticket.get().getAmount());
-      paymentRepo.save(payment);
+//      paymentRepo.save(payment);
+      ServiceResponse<InvoiceDto> invoiceResponse = pdfGenerator.generateInvoice(ticketId);
+
+      if (invoiceResponse.getSuccess()) {
+        byte[] pdfBytes = invoiceResponse.getData().getPdfBytes();
+      }
       return new ServiceResponse<>(true, bookingResponseDto,
           "your ticket is confirmed...ENJOY YOUR MOVIE");
 
@@ -177,6 +195,7 @@ public class PaymentServiceImpl implements PaymentService {
       showSeatsRepo.save(seat);
     }
     ticketRepo.save(t);
+    paymentRepo.findByTicketIdAndPaymentStatusPaid(t.getTicketId());
 
 //      List<ShowSeats> showSeats = t.getSeatList();
 
@@ -194,11 +213,19 @@ public class PaymentServiceImpl implements PaymentService {
 
     User user = t.getUser();
     double refundAmount = t.getAmount() * 0.9;
-    t.getPayment().setPaidAmt(t.getAmount() - refundAmount);
-    paymentRepo.save(t.getPayment());
+//    t.getPayment().setPaidAmt(t.getAmount() - refundAmount);
+    Payment pay = paymentRepo.findByTicketIdAndPaymentStatusPaid(t.getTicketId());
+    pay.setPaidAmt(t.getAmount() - refundAmount);
+    paymentRepo.save(pay);
+    Refund refund = Refund.builder()
+        .payment(pay)
+        .refundAt(new Date())
+        .status(RefundStatus.PAID)
+        .build();
+    refundRepo.save(refund);
     return new ServiceResponse<>(true, null,
         "we have initiated the refund of amount: " + refundAmount
-            + " .... after the cancellation charges...");
+            + " .... after the cancellation charges... "+"with refund id:"+ refund.getId());
   }
 
 }
