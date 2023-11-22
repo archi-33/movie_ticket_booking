@@ -152,12 +152,12 @@ public class PaymentServiceImpl implements PaymentService {
           .build();
       payment.setStatus(PaymentStatus.PAID);
       payment.setPaidAmt(ticket.get().getAmount());
-//      paymentRepo.save(payment);
-      ServiceResponse<InvoiceDto> invoiceResponse = pdfGenerator.generateInvoice(ticketId);
+      paymentRepo.save(payment);
+//      ServiceResponse<InvoiceDto> invoiceResponse = pdfGenerator.generateInvoice(ticketId);
 
-      if (invoiceResponse.getSuccess()) {
-        byte[] pdfBytes = invoiceResponse.getData().getPdfBytes();
-      }
+//      if (invoiceResponse.getSuccess()) {
+//        byte[] pdfBytes = invoiceResponse.getData().getPdfBytes();
+//      }
       return new ServiceResponse<>(true, bookingResponseDto,
           "your ticket is confirmed...ENJOY YOUR MOVIE");
 

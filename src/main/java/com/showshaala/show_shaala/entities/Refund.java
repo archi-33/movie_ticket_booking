@@ -37,7 +37,7 @@ public class Refund {
   private Date refundAt;
 
   @ManyToOne
-  @JoinColumn(name = "ticketId")
+  @JoinColumn(name = "paymentId")
   private Payment payment;
 
 

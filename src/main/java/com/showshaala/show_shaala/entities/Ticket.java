@@ -47,6 +47,8 @@ public class Ticket {
   @Column(unique = true, nullable = false, length = 255)
   private String invoice;
 
+  private String pdfPath;
+
 
   @ManyToOne
   @JsonIgnore
